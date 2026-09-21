@@ -40,3 +40,5 @@ pending separately approved evidence gates.
 See [operations](docs/operations.md) for setup, explicit checkpoint preload, hook trust, review,
 calibration, kill switch, rollback, purge, and uninstall. See [privacy](docs/privacy.md) for the
 local-processing, redaction, retention, review-access, and model-acquisition boundaries.
+Real-checkpoint bring-up evidence and performance gate metrics are documented in
+[bring-up](docs/bring-up.md).
