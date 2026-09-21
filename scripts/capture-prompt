@@ -1,7 +1,14 @@
 #!/bin/sh
 
-PLUGIN_ROOT="${PLUGIN_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
-export PLUGIN_DATA="${PLUGIN_DATA:-$HOME/.codex/plugins/data/knt-laya}"
-# A missing runtime or unavailable queue must never block the Codex prompt.
-uv run --offline --project "${PLUGIN_ROOT}" laya-codex-capture >/dev/null 2>&1 || true
+REPO_DIR="/Users/kanottonp/git/knt-laya"
+export PLUGIN_DATA="${PLUGIN_DATA:-${REPO_DIR}/data}"
+
+# Try virtualenv directly first, falling back to uv
+if [ -x "${REPO_DIR}/.venv/bin/laya-codex-capture" ]; then
+    PYTHONPATH="${REPO_DIR}/src" "${REPO_DIR}/.venv/bin/laya-codex-capture" >/dev/null 2>&1 || true
+elif command -v uv >/dev/null 2>&1; then
+    PLUGIN_ROOT="${PLUGIN_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+    uv run --offline --project "${PLUGIN_ROOT}" laya-codex-capture >/dev/null 2>&1 || true
+fi
+
 exit 0

@@ -4,7 +4,7 @@ import json
 import os
 import sqlite3
 import threading
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -63,7 +63,8 @@ class Storage:
     def open(cls, path: Path, role: Literal["capture", "mcp"]) -> "Storage":
         timeout_ms = 25 if role == "capture" else 2_000
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        path.parent.chmod(0o700)
+        with suppress(OSError):
+            path.parent.chmod(0o700)
         connection = sqlite3.connect(
             path,
             timeout=timeout_ms / 1_000,
@@ -87,7 +88,8 @@ class Storage:
                 connection.close()
                 raise UnsupportedSchemaVersion("destructive or unknown migration requires approval")
         connection.execute("PRAGMA journal_mode = WAL")
-        os.chmod(path, 0o600)
+        with suppress(OSError):
+            os.chmod(path, 0o600)
         return cls(connection, path)
 
     @property

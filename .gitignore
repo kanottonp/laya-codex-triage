@@ -12,4 +12,4 @@ __pycache__/
 *.sqlite3-wal
 artifacts/*
 !artifacts/.gitkeep
-
+data/

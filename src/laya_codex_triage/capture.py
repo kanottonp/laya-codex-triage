@@ -8,6 +8,7 @@ import secrets
 import sys
 import uuid
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib import import_module
@@ -91,7 +92,8 @@ def capture_hook(
 
 def _load_or_create_identity_salt(plugin_data: Path) -> bytes:
     plugin_data.mkdir(mode=0o700, parents=True, exist_ok=True)
-    plugin_data.chmod(0o700)
+    with suppress(OSError):
+        plugin_data.chmod(0o700)
     salt_path = plugin_data / ".identity-salt"
     try:
         descriptor = os.open(salt_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -100,7 +102,8 @@ def _load_or_create_identity_salt(plugin_data: Path) -> bytes:
     else:
         with os.fdopen(descriptor, "wb") as salt_file:
             salt_file.write(secrets.token_bytes(32))
-    salt_path.chmod(0o600)
+    with suppress(OSError):
+        salt_path.chmod(0o600)
     return salt_path.read_bytes()
 
 
