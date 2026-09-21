@@ -1,6 +1,7 @@
 #!/bin/sh
 
+PLUGIN_ROOT="${PLUGIN_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 export PLUGIN_DATA="${PLUGIN_DATA:-$HOME/.codex/plugins/data/knt-laya}"
 # A missing runtime or unavailable queue must never block the Codex prompt.
-uv run --offline --project "${PLUGIN_ROOT:?}" laya-codex-capture >/dev/null 2>&1 || true
+uv run --offline --project "${PLUGIN_ROOT}" laya-codex-capture >/dev/null 2>&1 || true
 exit 0

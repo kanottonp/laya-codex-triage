@@ -1,4 +1,5 @@
 #!/bin/sh
 
 export PLUGIN_DATA="${PLUGIN_DATA:-$HOME/.codex/plugins/data/knt-laya}"
-exec uv run --offline --project "${PLUGIN_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}" +  laya-codex-worker "$@"
+exec uv run --offline --project "${PLUGIN_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}" \
+  laya-codex-worker "$@"
