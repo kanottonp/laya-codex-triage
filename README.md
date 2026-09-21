@@ -34,5 +34,9 @@ uv run mypy src
 ```
 
 The MCP server, hook, preload command, review skill, and operational documentation are implemented
-in later plan tasks. Do not install or enable this plugin until bring-up and fail-open verification
-are complete.
+in this repository. The initial release is shadow-only: advisory and active routing remain disabled
+pending separately approved evidence gates.
+
+See [operations](docs/operations.md) for setup, explicit checkpoint preload, hook trust, review,
+calibration, kill switch, rollback, purge, and uninstall. See [privacy](docs/privacy.md) for the
+local-processing, redaction, retention, review-access, and model-acquisition boundaries.
