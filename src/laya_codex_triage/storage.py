@@ -68,7 +68,7 @@ class Storage:
             path,
             timeout=timeout_ms / 1_000,
             isolation_level=None,
-            check_same_thread=True,
+            check_same_thread=False,
         )
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
@@ -363,7 +363,8 @@ class Storage:
         rows = self._connection.execute(
             """
             SELECT c.capture_id, c.captured_at, c.repository_name, c.prompt,
-                   p.prediction_json, l.model_tier AS label_model_tier,
+                   p.prediction_json, p.inference_latency_ms, p.queue_delay_ms,
+                   l.model_tier AS label_model_tier,
                    l.reasoning_effort AS label_reasoning_effort
             FROM captures AS c
             JOIN predictions AS p USING(capture_id)
