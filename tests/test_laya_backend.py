@@ -107,3 +107,38 @@ def test_missing_local_checkpoint_is_reported_without_download() -> None:
 def test_backend_rejects_any_implicit_download_path() -> None:
     with pytest.raises(ValueError, match="preload"):
         LayaBackend("checkpoint", "revision", local_files_only=False)
+
+
+def test_backend_concurrent_predictions_are_serialized_with_lock() -> None:
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    active_calls = 0
+    max_concurrent_calls = 0
+    lock = threading.Lock()
+
+    class ConcurrentAgent:
+        def predict(self, _prompt: str, _questions: Mapping[str, object]) -> object:
+            nonlocal active_calls, max_concurrent_calls
+            with lock:
+                active_calls += 1
+                if active_calls > max_concurrent_calls:
+                    max_concurrent_calls = active_calls
+            time.sleep(0.01)
+            with lock:
+                active_calls -= 1
+            return valid_output()
+
+    backend = LayaBackend(
+        "convaiinnovations/laya-multilingual",
+        "revision-123",
+        snapshot_resolver=lambda *a, **k: "/models/laya",
+        agent_loader=lambda _p: ConcurrentAgent(),
+    )
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        results = list(executor.map(lambda i: backend.predict(f"prompt {i}"), range(10)))
+
+    assert len(results) == 10
+    assert max_concurrent_calls == 1

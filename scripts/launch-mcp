@@ -1,0 +1,5 @@
+#!/bin/sh
+
+PLUGIN_ROOT="${PLUGIN_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
+export PLUGIN_DATA="${PLUGIN_DATA:-$HOME/.codex/plugins/data/knt-laya}"
+exec uv run --offline --project "${PLUGIN_ROOT}" laya-codex-mcp "$@"

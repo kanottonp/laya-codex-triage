@@ -1,5 +1,6 @@
 """Import-isolated adapter for the official Laya runtime."""
 
+import threading
 import time
 from collections.abc import Callable, Mapping
 from importlib import import_module
@@ -80,6 +81,7 @@ class LayaBackend:
         self.checkpoint = checkpoint
         self.revision = revision
         self._timer = timer
+        self._lock = threading.Lock()
         resolver = snapshot_resolver or _snapshot_download
         try:
             model_path = resolver(
@@ -95,42 +97,43 @@ class LayaBackend:
         self._agent = loader(model_path)
 
     def predict(self, prompt: str) -> Prediction:
-        started = self._timer()
-        try:
-            output = self._agent.predict(prompt, DECISION_QUESTIONS)
-            answers = _mapping(output, "output")["answers"]
-            answer_map = _mapping(answers, "answers")
-            tier_answer = _choice_answer(answer_map.get("model_tier"), ModelTier, "model_tier")
-            effort_answer = _choice_answer(
-                answer_map.get("reasoning_effort"), ReasoningEffort, "reasoning_effort"
-            )
-            tier_choice, tier_distribution, tier_confidence = tier_answer
-            effort_choice, effort_distribution, effort_confidence = effort_answer
-        except BackendOutputError:
-            raise
-        except Exception as error:
-            raise BackendOutputError("invalid Laya decision output") from error
+        with self._lock:
+            started = self._timer()
+            try:
+                output = self._agent.predict(prompt, DECISION_QUESTIONS)
+                answers = _mapping(output, "output")["answers"]
+                answer_map = _mapping(answers, "answers")
+                tier_answer = _choice_answer(answer_map.get("model_tier"), ModelTier, "model_tier")
+                effort_answer = _choice_answer(
+                    answer_map.get("reasoning_effort"), ReasoningEffort, "reasoning_effort"
+                )
+                tier_choice, tier_distribution, tier_confidence = tier_answer
+                effort_choice, effort_distribution, effort_confidence = effort_answer
+            except BackendOutputError:
+                raise
+            except Exception as error:
+                raise BackendOutputError("invalid Laya decision output") from error
 
-        finished = self._timer()
-        latency_ms = max(0.0, round((finished - started) * 1_000, 3))
-        abstention_reason = _abstention_reason(tier_distribution, effort_distribution)
-        return Prediction(
-            model_tier=ModelTier(tier_choice),
-            reasoning_effort=ReasoningEffort(effort_choice),
-            model_tier_distribution={
-                ModelTier(key): value for key, value in tier_distribution.items()
-            },
-            reasoning_effort_distribution={
-                ReasoningEffort(key): value for key, value in effort_distribution.items()
-            },
-            checkpoint=self.checkpoint,
-            checkpoint_revision=self.revision,
-            model_tier_confidence=tier_confidence,
-            reasoning_effort_confidence=effort_confidence,
-            latency_ms=latency_ms,
-            abstained=abstention_reason is not None,
-            abstention_reason=abstention_reason,
-        )
+            finished = self._timer()
+            latency_ms = max(0.0, round((finished - started) * 1_000, 3))
+            abstention_reason = _abstention_reason(tier_distribution, effort_distribution)
+            return Prediction(
+                model_tier=ModelTier(tier_choice),
+                reasoning_effort=ReasoningEffort(effort_choice),
+                model_tier_distribution={
+                    ModelTier(key): value for key, value in tier_distribution.items()
+                },
+                reasoning_effort_distribution={
+                    ReasoningEffort(key): value for key, value in effort_distribution.items()
+                },
+                checkpoint=self.checkpoint,
+                checkpoint_revision=self.revision,
+                model_tier_confidence=tier_confidence,
+                reasoning_effort_confidence=effort_confidence,
+                latency_ms=latency_ms,
+                abstained=abstention_reason is not None,
+                abstention_reason=abstention_reason,
+            )
 
 
 def _snapshot_download(checkpoint: str, *, revision: str, local_files_only: bool) -> str:

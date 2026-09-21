@@ -1,4 +1,7 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "laya-codex-triage": {
+      "command": "./scripts/launch-mcp"
+    }
+  }
 }
-

@@ -134,3 +134,32 @@ def test_purge_requires_exact_confirmation_and_reports_count(tmp_path: Path) -> 
 
     result = call(server, "triage_purge", {"confirmation": "PURGE"})
     assert result.structured_content["purged"] == 0  # type: ignore[attr-defined]
+
+
+def test_start_background_worker_consumes_queue(tmp_path: Path) -> None:
+    import time
+
+    from laya_codex_triage.mcp_server import start_background_worker
+
+    class SequenceBackend:
+        def __init__(self, items: list[Prediction]) -> None:
+            self.items = items
+
+        def predict(self, _p: str) -> Prediction:
+            return self.items.pop(0)
+
+    storage = Storage.open(tmp_path / "triage.sqlite3", role="mcp")
+    storage.enqueue_capture(capture("bg-test"))
+    backend = SequenceBackend([prediction()])
+
+    thread = start_background_worker(storage, backend=backend, idle_sleep_seconds=0.01)
+    assert thread is not None
+    assert thread.is_alive()
+
+    for _ in range(50):
+        if storage.pending_count() == 0 and storage.count_records("predictions") == 1:
+            break
+        time.sleep(0.02)
+
+    assert storage.pending_count() == 0
+    assert storage.count_records("predictions") == 1

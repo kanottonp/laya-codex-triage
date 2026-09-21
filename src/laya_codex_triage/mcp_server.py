@@ -2,6 +2,7 @@
 
 import json
 import os
+import threading
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Literal
@@ -9,6 +10,7 @@ from typing import Any, Literal
 from mcp.server.mcpserver import MCPServer
 
 from . import DEFAULT_PLUGIN_DATA
+from .laya_backend import DecisionBackend
 from .models import ModelTier, ReasoningEffort
 from .reporting import ReportObservation, build_report
 from .storage import Storage
@@ -175,7 +177,7 @@ def create_mcp_server(storage: Storage) -> MCPServer[None]:
     server: MCPServer[None] = MCPServer(
         "laya-codex-triage",
         description="Local shadow-mode triage review and reporting",
-        version="0.1.1",
+        version="0.1.3",
     )
 
     def triage_health() -> dict[str, object]:
@@ -240,9 +242,40 @@ def _count_fields(question: str) -> tuple[str, ...]:
     return ("low", "medium", "high", "xhigh")
 
 
+def start_background_worker(
+    storage: Storage,
+    backend: DecisionBackend | None = None,
+    *,
+    idle_sleep_seconds: float = 0.25,
+) -> threading.Thread | None:
+    if os.environ.get("LAYA_DISABLE_BACKGROUND_WORKER", "").lower() in ("1", "true", "yes"):
+        return None
+    from . import DEFAULT_CHECKPOINT, DEFAULT_CHECKPOINT_REVISION
+    from .laya_backend import LayaBackend
+    from .worker import Worker
+
+    try:
+        resolved_backend = backend or LayaBackend(
+            DEFAULT_CHECKPOINT, DEFAULT_CHECKPOINT_REVISION, local_files_only=True
+        )
+    except Exception:
+        return None
+
+    worker = Worker(storage, resolved_backend)
+    thread = threading.Thread(
+        target=worker.run_forever,
+        kwargs={"idle_sleep_seconds": idle_sleep_seconds},
+        daemon=True,
+        name="laya-worker-daemon",
+    )
+    thread.start()
+    return thread
+
+
 def main() -> int:
     plugin_data_value = os.environ.get("PLUGIN_DATA")
     plugin_data = Path(plugin_data_value) if plugin_data_value else DEFAULT_PLUGIN_DATA
     storage = Storage.open(plugin_data / "triage.sqlite3", role="mcp")
+    start_background_worker(storage)
     create_mcp_server(storage).run("stdio")
     return 0
