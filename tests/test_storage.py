@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import stat
 from dataclasses import replace
@@ -128,6 +129,9 @@ def test_purge_removes_old_prompt_but_preserves_prediction_and_label(tmp_path: P
     assert record is not None and record.prompt is None
     assert storage.count_records("predictions") == 1
     assert storage.count_records("labels") == 1
+    recent = storage.recent_predictions(limit=1)
+    saved = json.loads(str(recent[0]["prediction_json"]))
+    assert saved["latency_ms"] == 2.0
 
 
 def test_open_rejects_newer_or_destructive_schema(tmp_path: Path) -> None:

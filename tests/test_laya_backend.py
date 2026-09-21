@@ -53,6 +53,7 @@ def test_backend_uses_exact_two_question_schema_and_records_metadata() -> None:
         "revision-123",
         snapshot_resolver=resolve,
         agent_loader=lambda path: agent if path == "/models/laya" else None,
+        timer=lambda: 100.0,
     )
     result = backend.predict("แก้ deployment นี้")
 
@@ -73,6 +74,7 @@ def test_backend_uses_exact_two_question_schema_and_records_metadata() -> None:
     assert result.reasoning_effort_confidence == 0.68
     assert result.checkpoint == "convaiinnovations/laya-multilingual"
     assert result.checkpoint_revision == "revision-123"
+    assert result.latency_ms == 0.0
 
 
 def test_backend_rejects_malformed_or_incomplete_output() -> None:

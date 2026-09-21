@@ -84,6 +84,8 @@ def test_tool_schemas_hide_prompt_by_default_and_allow_explicit_review(tmp_path:
 
     assert "prompt" not in hidden.structured_content["items"][0]  # type: ignore[attr-defined]
     assert visible.structured_content["items"][0]["prompt"] == "review prompt sample"  # type: ignore[attr-defined]
+    assert hidden.structured_content["items"][0]["inference_latency_ms"] == 2.0  # type: ignore[attr-defined]
+    assert hidden.structured_content["items"][0]["prediction"]["latency_ms"] == 2.0  # type: ignore[attr-defined]
 
 
 def test_review_sample_label_upsert_and_report(tmp_path: Path) -> None:

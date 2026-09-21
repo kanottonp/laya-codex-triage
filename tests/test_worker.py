@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -81,6 +82,9 @@ def test_worker_claims_completes_and_records_latency(tmp_path: Path) -> None:
     assert result.inference_latency_ms == 25.0
     assert storage.get_capture("success").status == "completed"  # type: ignore[union-attr]
     assert storage.count_records("predictions") == 1
+    recent = storage.recent_predictions(limit=1)
+    saved_prediction = json.loads(str(recent[0]["prediction_json"]))
+    assert saved_prediction["latency_ms"] == 25.0
 
 
 def test_worker_retries_three_times_with_exponential_backoff(tmp_path: Path) -> None:

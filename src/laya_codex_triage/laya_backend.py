@@ -1,6 +1,7 @@
 """Import-isolated adapter for the official Laya runtime."""
 
-from collections.abc import Mapping
+import time
+from collections.abc import Callable, Mapping
 from importlib import import_module
 from pathlib import Path
 from typing import Protocol, cast
@@ -72,11 +73,13 @@ class LayaBackend:
         *,
         snapshot_resolver: _SnapshotResolver | None = None,
         agent_loader: _AgentLoader | None = None,
+        timer: Callable[[], float] = time.perf_counter,
     ) -> None:
         if not local_files_only:
             raise ValueError("LayaBackend cannot download checkpoints; use explicit preload")
         self.checkpoint = checkpoint
         self.revision = revision
+        self._timer = timer
         resolver = snapshot_resolver or _snapshot_download
         try:
             model_path = resolver(
@@ -92,6 +95,7 @@ class LayaBackend:
         self._agent = loader(model_path)
 
     def predict(self, prompt: str) -> Prediction:
+        started = self._timer()
         try:
             output = self._agent.predict(prompt, DECISION_QUESTIONS)
             answers = _mapping(output, "output")["answers"]
@@ -107,6 +111,8 @@ class LayaBackend:
         except Exception as error:
             raise BackendOutputError("invalid Laya decision output") from error
 
+        finished = self._timer()
+        latency_ms = max(0.0, round((finished - started) * 1_000, 3))
         abstention_reason = _abstention_reason(tier_distribution, effort_distribution)
         return Prediction(
             model_tier=ModelTier(tier_choice),
@@ -121,6 +127,7 @@ class LayaBackend:
             checkpoint_revision=self.revision,
             model_tier_confidence=tier_confidence,
             reasoning_effort_confidence=effort_confidence,
+            latency_ms=latency_ms,
             abstained=abstention_reason is not None,
             abstention_reason=abstention_reason,
         )

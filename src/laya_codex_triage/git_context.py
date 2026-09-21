@@ -1,12 +1,21 @@
 """Timeout-bounded Git repository discovery for prompt capture."""
 
+import os
 import subprocess
 from pathlib import Path
 
-GIT_LOOKUP_TIMEOUT_SECONDS = 0.04
+DEFAULT_GIT_LOOKUP_TIMEOUT_SECONDS = 0.1
+GIT_LOOKUP_TIMEOUT_SECONDS = DEFAULT_GIT_LOOKUP_TIMEOUT_SECONDS
 
 
-def resolve_git_root(cwd: str) -> Path | None:
+def resolve_git_root(cwd: str, *, timeout: float | None = None) -> Path | None:
+    effective_timeout = (
+        timeout
+        if timeout is not None
+        else float(
+            os.environ.get("LAYA_GIT_LOOKUP_TIMEOUT_SECONDS", DEFAULT_GIT_LOOKUP_TIMEOUT_SECONDS)
+        )
+    )
     try:
         result = subprocess.run(
             ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
@@ -14,7 +23,7 @@ def resolve_git_root(cwd: str) -> Path | None:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True,
-            timeout=GIT_LOOKUP_TIMEOUT_SECONDS,
+            timeout=effective_timeout,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None

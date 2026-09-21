@@ -146,6 +146,8 @@ class TriageService:
         value = json.loads(str(row["prediction_json"]))
         if not isinstance(value, dict):
             raise ValueError("prediction_json must contain an object")
+        if value.get("latency_ms") is None and row.get("inference_latency_ms") is not None:
+            value["latency_ms"] = _float(row["inference_latency_ms"])
         return value
 
     @staticmethod
@@ -172,7 +174,7 @@ def create_mcp_server(storage: Storage) -> MCPServer[None]:
     server: MCPServer[None] = MCPServer(
         "laya-codex-triage",
         description="Local shadow-mode triage review and reporting",
-        version="0.1.0",
+        version="0.1.1",
     )
 
     def triage_health() -> dict[str, object]:

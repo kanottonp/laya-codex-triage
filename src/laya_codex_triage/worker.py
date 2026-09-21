@@ -82,6 +82,8 @@ class Worker:
         inference_latency_ms = round((finished - started) * 1_000, 3)
         captured_at = datetime.fromisoformat(capture.captured_at)
         queue_delay_ms = max(0.0, (datetime.now(UTC) - captured_at).total_seconds() * 1_000)
+        if prediction.latency_ms is None:
+            prediction = prediction.model_copy(update={"latency_ms": inference_latency_ms})
         self._storage.complete_prediction(
             capture.capture_id,
             prediction,

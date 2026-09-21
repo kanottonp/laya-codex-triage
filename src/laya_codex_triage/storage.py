@@ -180,6 +180,8 @@ class Storage:
         queue_delay_ms: float,
         inference_latency_ms: float,
     ) -> None:
+        if prediction.latency_ms is None:
+            prediction = prediction.model_copy(update={"latency_ms": inference_latency_ms})
         predicted_at = datetime.now(UTC).isoformat()
         payload = prediction.model_dump(mode="json")
         with self._transaction():
