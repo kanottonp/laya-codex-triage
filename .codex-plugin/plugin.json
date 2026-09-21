@@ -1,6 +1,6 @@
 {
   "name": "knt-laya",
-  "version": "0.1.4",
+  "version": "0.1.4+codex.20260921184447",
   "description": "Local shadow-mode triage for repository-backed Codex prompts.",
   "author": {
     "name": "Local developer"

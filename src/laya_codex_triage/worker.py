@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
-from . import DEFAULT_CHECKPOINT, DEFAULT_CHECKPOINT_REVISION, DEFAULT_PLUGIN_DATA
+from . import DEFAULT_CHECKPOINT, DEFAULT_CHECKPOINT_REVISION, resolve_plugin_data
 from .laya_backend import BackendOutputError, DecisionBackend, LayaBackend
 from .storage import Storage
 
@@ -132,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    plugin_data = args.plugin_data or Path(os.environ.get("PLUGIN_DATA") or DEFAULT_PLUGIN_DATA)
+    plugin_data = args.plugin_data or resolve_plugin_data(os.environ)
     storage = Storage.open(plugin_data / "triage.sqlite3", role="mcp")
     backend = LayaBackend(DEFAULT_CHECKPOINT, DEFAULT_CHECKPOINT_REVISION, local_files_only=True)
     worker = Worker(storage, backend)

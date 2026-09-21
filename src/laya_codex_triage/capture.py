@@ -15,7 +15,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Protocol, TextIO, cast
 
-from . import DEFAULT_PLUGIN_DATA
+from . import resolve_plugin_data
 from .git_context import resolve_git_root
 from .redaction import REDACTION_VERSION, redact_prompt
 
@@ -66,8 +66,7 @@ def capture_hook(
         if git_root is None:
             return 0
 
-        plugin_data_value = environ.get("PLUGIN_DATA")
-        plugin_data = Path(plugin_data_value) if plugin_data_value else DEFAULT_PLUGIN_DATA
+        plugin_data = resolve_plugin_data(environ)
         salt = _load_or_create_identity_salt(plugin_data)
         redacted = redact_prompt(payload["prompt"])
         record = CaptureRecord(

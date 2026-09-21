@@ -4,12 +4,13 @@ import json
 import os
 import threading
 from collections import defaultdict
-from pathlib import Path
 from typing import Any, Literal
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 
-from . import DEFAULT_PLUGIN_DATA
+from . import resolve_plugin_data
+from .dashboard import DashboardController
 from .laya_backend import DecisionBackend
 from .models import ModelTier, ReasoningEffort
 from .reporting import ReportObservation, build_report
@@ -172,8 +173,11 @@ def _float(value: object) -> float:
     return float(value)
 
 
-def create_mcp_server(storage: Storage) -> MCPServer[None]:
+def create_mcp_server(
+    storage: Storage, *, dashboard: DashboardController | None = None
+) -> MCPServer[None]:
     service = TriageService(storage)
+    controller = dashboard or DashboardController(storage)
     server: MCPServer[None] = MCPServer(
         "laya-codex-triage",
         description="Local shadow-mode triage review and reporting",
@@ -215,6 +219,15 @@ def create_mcp_server(storage: Storage) -> MCPServer[None]:
 
         return service.purge(confirmation)
 
+    def triage_dashboard() -> dict[str, object]:
+        """Start the local labeling dashboard and return its loopback URL."""
+
+        try:
+            started = controller.start()
+        except OSError as error:
+            raise ToolError(f"dashboard port 11020 is unavailable: {error}") from error
+        return {"url": controller.url, "started": started}
+
     for tool in (
         triage_health,
         triage_recent,
@@ -222,6 +235,7 @@ def create_mcp_server(storage: Storage) -> MCPServer[None]:
         triage_label,
         triage_report,
         triage_purge,
+        triage_dashboard,
     ):
         server.add_tool(tool)
     return server
@@ -273,9 +287,13 @@ def start_background_worker(
 
 
 def main() -> int:
-    plugin_data_value = os.environ.get("PLUGIN_DATA")
-    plugin_data = Path(plugin_data_value) if plugin_data_value else DEFAULT_PLUGIN_DATA
+    plugin_data = resolve_plugin_data(os.environ)
     storage = Storage.open(plugin_data / "triage.sqlite3", role="mcp")
-    start_background_worker(storage)
-    create_mcp_server(storage).run("stdio")
+    controller = DashboardController(storage)
+    try:
+        start_background_worker(storage)
+        create_mcp_server(storage, dashboard=controller).run("stdio")
+    finally:
+        controller.close()
+        storage.close()
     return 0

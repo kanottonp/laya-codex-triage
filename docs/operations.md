@@ -59,6 +59,13 @@ Use the bundled `laya-triage-review` skill or call the MCP tools directly:
 - `triage_label`: create or correct the two human labels.
 - `triage_report`: exact match, within-one effort, confusion, latency, dangerous downgrade, and routing-opportunity metrics.
 - `triage_purge`: immediately apply 30-day prompt retention after exact `PURGE` confirmation.
+- `triage_dashboard`: starts the bundled local review dashboard and returns
+  `http://127.0.0.1:11020`.
+
+`triage_dashboard` reads the same Codex-provided `PLUGIN_DATA/triage.sqlite3`
+database as the hook and worker. It listens only on `127.0.0.1`; do not run a
+separate dashboard process for installed-plugin use. If port 11020 is already
+occupied, the tool returns an error and leaves that process untouched.
 
 Review 10–20 predictions per week. Judge the original task complexity; never treat the active model as ground truth.
 

@@ -37,6 +37,9 @@ The MCP server, hook, preload command, review skill, and operational documentati
 in this repository. The initial release is shadow-only: advisory and active routing remain disabled
 pending separately approved evidence gates.
 
+For local review, call the MCP tool `triage_dashboard`; it starts the bundled dashboard at
+`http://127.0.0.1:11020` and reads the same Codex plugin-data SQLite database as the hook.
+
 See [operations](docs/operations.md) for setup, explicit checkpoint preload, hook trust, review,
 calibration, kill switch, rollback, purge, and uninstall. See [privacy](docs/privacy.md) for the
 local-processing, redaction, retention, review-access, and model-acquisition boundaries.

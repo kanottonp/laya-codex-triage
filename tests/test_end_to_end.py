@@ -5,6 +5,7 @@ import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from laya_codex_triage import resolve_plugin_data
 from laya_codex_triage.capture import CaptureRecord, capture_hook
 from laya_codex_triage.mcp_server import create_mcp_server
 from laya_codex_triage.models import ModelTier, Prediction, ReasoningEffort
@@ -114,3 +115,23 @@ def test_shadow_pipeline_skips_projectless_and_never_writes_repository(tmp_path:
     ).stdout
     assert before_files == after_files
     assert before_status == after_status
+
+
+def test_hook_and_mcp_share_supplied_plugin_data(tmp_path: Path) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    subprocess.run(["git", "init", str(repository)], check=True, stdout=subprocess.DEVNULL)
+    plugin_data = tmp_path / "codex-plugin-data"
+    payload = {
+        "cwd": str(repository),
+        "session_id": "shared-session",
+        "turn_id": "shared-turn",
+        "model": "gpt-5.6-terra",
+        "permission_mode": "default",
+        "prompt": "capture through supplied plugin data",
+    }
+
+    assert capture_hook(io.StringIO(json.dumps(payload)), {"PLUGIN_DATA": str(plugin_data)}) == 0
+    assert resolve_plugin_data({"PLUGIN_DATA": str(plugin_data)}) == plugin_data
+    assert Storage.open(plugin_data / "triage.sqlite3", role="mcp").count_records("captures") == 1
+    assert not (repository / "data" / "triage.sqlite3").exists()

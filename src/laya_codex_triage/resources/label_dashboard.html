@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laya Triage — Label Dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117; --fg: #e6edf3; --card: #161b22; --card-fg: #e6edf3;
+    --border: #30363d; --muted: #21262d; --muted-fg: #8b949e;
+    --primary: #58a6ff; --primary-fg: #0d1117;
+    --green: #3fb950; --blue: #58a6ff; --orange: #d29922; --red: #f85149; --purple: #bc8cff;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #ffffff; --fg: #1f2328; --card: #f6f8fa; --card-fg: #1f2328;
+      --border: #d1d9e0; --muted: #f0f3f6; --muted-fg: #656d76;
+      --primary: #0969da; --primary-fg: #fff;
+      --green: #1a7f37; --blue: #0969da; --orange: #9a6700; --red: #cf222e; --purple: #8250df;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--fg); line-height: 1.5; padding: 24px; max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.5em; font-weight: 600; margin-bottom: 8px; }
+  .subtitle { color: var(--muted-fg); margin-bottom: 24px; font-size: 0.9em; }
+
+  /* Stats */
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; flex: 1; min-width: 100px; }
+  .stat-label { font-size: 0.75em; color: var(--muted-fg); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 1.4em; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .tab { background: none; border: none; color: var(--muted-fg); font: inherit; font-size: 0.9em; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .tab:hover { color: var(--fg); }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+  /* Capture cards */
+  .captures { display: flex; flex-direction: column; gap: 12px; }
+  .capture-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: border-color 0.15s; }
+  .capture-card:hover { border-color: var(--muted-fg); }
+  .capture-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: 500; }
+  .badge-tier-fast { background: var(--green); color: #fff; opacity: 0.85; }
+  .badge-tier-balanced { background: var(--blue); color: #fff; opacity: 0.85; }
+  .badge-tier-deep { background: var(--purple); color: #fff; opacity: 0.85; }
+  .badge-effort-low { background: var(--green); color: #fff; opacity: 0.7; }
+  .badge-effort-medium { background: var(--blue); color: #fff; opacity: 0.7; }
+  .badge-effort-high { background: var(--orange); color: #fff; opacity: 0.7; }
+  .badge-effort-xhigh { background: var(--red); color: #fff; opacity: 0.7; }
+  .badge-abstained { background: var(--orange); color: #fff; opacity: 0.75; }
+  .badge-repo { background: var(--muted); color: var(--muted-fg); }
+  .badge-labeled { background: var(--green); color: #fff; opacity: 0.6; font-size: 0.7em; }
+  .prompt-text { font-size: 0.95em; word-break: break-word; margin-bottom: 6px; }
+  .meta { font-size: 0.8em; color: var(--muted-fg); }
+
+  /* Distributions */
+  .dist-section { margin-top: 12px; }
+  .dist-title { font-size: 0.8em; color: var(--muted-fg); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .dist-bar { margin: 4px 0; }
+  .dist-bar-header { display: flex; justify-content: space-between; font-size: 0.8em; }
+  .dist-bar-track { height: 6px; background: var(--muted); border-radius: 3px; overflow: hidden; margin-top: 2px; }
+  .dist-bar-fill { height: 100%; border-radius: 3px; }
+
+  /* Local heuristic suggestion */
+  .llm-suggestion { background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
+  .llm-header { font-size: 0.8em; color: var(--muted-fg); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .llm-suggestion .reason { font-size: 0.85em; color: var(--fg); margin-top: 6px; line-height: 1.4; }
+  .llm-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Label form */
+  .label-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .label-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 8px; }
+  .label-group { display: flex; flex-direction: column; gap: 4px; }
+  .label-group label { font-size: 0.75em; color: var(--muted-fg); text-transform: uppercase; }
+  .label-group select, .label-group input { font: inherit; font-size: 0.85em; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
+  .label-group input { min-width: 200px; }
+  .btn-save { background: var(--primary); color: var(--primary-fg); border: none; border-radius: 6px; padding: 6px 16px; font: inherit; font-size: 0.85em; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn-save:hover { opacity: 0.85; }
+  .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-use-llm { background: var(--muted); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 0.8em; cursor: pointer; transition: all 0.15s; }
+  .btn-use-llm:hover { background: var(--border); }
+  .save-status { font-size: 0.8em; margin-top: 4px; }
+  .save-ok { color: var(--green); }
+  .save-err { color: var(--red); }
+
+  /* Existing label */
+  .existing-label { margin-top: 8px; padding: 8px 12px; background: var(--muted); border-radius: 6px; font-size: 0.85em; }
+  .existing-label strong { color: var(--primary); }
+
+  .empty { text-align: center; padding: 40px; color: var(--muted-fg); }
+  .loading { text-align: center; padding: 40px; color: var(--muted-fg); }
+</style>
+</head>
+<body>
+<h1>Laya Triage — Label Dashboard</h1>
+<p class="subtitle">ดู prediction ของ Laya แล้ว label tier/effort ที่ถูกต้อง พร้อม guideline แบบ local rule-based</p>
+
+<div class="stats" id="stats"></div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-filter="all">ทั้งหมด</button>
+  <button class="tab" data-filter="unlabeled">ยังไม่ label</button>
+  <button class="tab" data-filter="labeled">label แล้ว</button>
+</div>
+
+<div class="captures" id="captures">
+  <div class="loading">กำลังโหลด...</div>
+</div>
+
+<script>
+const API = location.origin;
+let allItems = [];
+let currentFilter = "all";
+
+const TIER_CLASSES = { fast: "badge-tier-fast", balanced: "badge-tier-balanced", deep: "badge-tier-deep" };
+const EFFORT_CLASSES = { low: "badge-effort-low", medium: "badge-effort-medium", high: "badge-effort-high", xhigh: "badge-effort-xhigh" };
+
+const LLM_GUIDELINES = {
+  tier: {
+    fast: "งานง่าย ตรงไปตรงมา ทำตามคำสั่ง ไม่ต้องวิเคราะห์ เช่น รัน test, ตอบคำถามง่าย, format code",
+    balanced: "ต้องคิดวางแผนบ้าง วิเคราะห์โค้ดหลายไฟล์ diagnose ปัญหา implement feature ระดับกลาง",
+    deep: "งานซับซ้อน ต้องวิเคราะห์ลึก architecture decisions, security review, multi-system debugging, refactoring ใหญ่"
+  },
+  effort: {
+    low: "ทำตามคำสั่งง่ายๆ ไม่ต้อง reason มาก",
+    medium: "ต้องวางแผนขั้นตอนบ้าง คิดก่อนทำ",
+    high: "ต้องวิเคราะห์หลายมุม เปรียบเทียบทางเลือก",
+    xhigh: "ต้องคิดรอบด้าน วิเคราะห์ risk/tradeoff อย่างละเอียด"
+  }
+};
+
+function suggestLabel(prompt, prediction) {
+  const p = (prompt || "").toLowerCase();
+  const pred = prediction || {};
+  const tierDist = pred.model_tier_distribution || {};
+  const effortDist = pred.reasoning_effort_distribution || {};
+  const predTier = pred.model_tier || "balanced";
+  const predEffort = pred.reasoning_effort || "medium";
+  const tierConf = pred.model_tier_confidence || 0;
+  const effortConf = pred.reasoning_effort_confidence || 0;
+
+  let tier = predTier;
+  let effort = predEffort;
+  let reasons = [];
+
+  // Simple heuristics to generate a suggestion with reasoning
+  const simplePatterns = ["ทดสอบ", "test", "รัน", "run", "check", "verify", "format", "lint"];
+  const mediumPatterns = ["แก้", "fix", "debug", "implement", "เพิ่ม", "add", "สร้าง", "create", "diagnose", "หาสาเหตุ"];
+  const deepPatterns = ["refactor", "architect", "security", "review", "migrate", "design", "วิเคราะห์"];
+
+  if (simplePatterns.some(pat => p.includes(pat))) {
+    tier = "fast";
+    effort = "low";
+    reasons.push("Prompt ดูเป็นงาน verification/testing ตรงไปตรงมา");
+  } else if (deepPatterns.some(pat => p.includes(pat))) {
+    tier = "deep";
+    effort = "high";
+    reasons.push("Prompt ต้องการการวิเคราะห์เชิงลึกหรือ architectural decision");
+  } else if (mediumPatterns.some(pat => p.includes(pat))) {
+    tier = "balanced";
+    effort = "medium";
+    reasons.push("Prompt ต้องการ implementation หรือ diagnosis ระดับกลาง");
+  } else {
+    // Fall back to Laya prediction with commentary
+    reasons.push("ไม่มี pattern ชัดเจน ใช้ prediction ของ Laya เป็นฐาน");
+  }
+
+  // Add Laya's prediction context
+  const topTierProb = Math.max(...Object.values(tierDist));
+  const topEffortProb = Math.max(...Object.values(effortDist));
+  reasons.push("Laya ทาย " + predTier + " (" + (topTierProb*100).toFixed(0) + "%) / " + predEffort + " (" + (topEffortProb*100).toFixed(0) + "%)");
+
+  if (tierConf < 0.3) {
+    reasons.push("⚠ Tier confidence ต่ำ (" + (tierConf*100).toFixed(0) + "%) — ควร review ด้วยตัวเอง");
+  }
+
+  // Add tier/effort description
+  reasons.push("💡 " + tier + ": " + LLM_GUIDELINES.tier[tier]);
+  reasons.push("💡 " + effort + ": " + LLM_GUIDELINES.effort[effort]);
+
+  return { tier, effort, reasons };
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s || "";
+  return d.innerHTML;
+}
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("th-TH", { day:"numeric", month:"short" })
+    + " " + d.toLocaleTimeString("th-TH", { hour:"2-digit", minute:"2-digit" });
+}
+
+function formatMilliseconds(value, status) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.round(value) + " ms";
+  }
+  return status === "pending" || status === "processing" ? "pending" : "— ms";
+}
+
+function renderDistBars(dist, colorMap) {
+  if (!dist) return "";
+  const entries = Object.entries(dist).sort((a,b) => b[1] - a[1]);
+  return entries.map(([k,v]) => {
+    const pct = (v*100).toFixed(1);
+    const bgColor = colorMap[k] || "var(--primary)";
+    return '<div class="dist-bar">'
+      + '<div class="dist-bar-header"><span>' + k + '</span><span>' + pct + '%</span></div>'
+      + '<div class="dist-bar-track"><div class="dist-bar-fill" style="width:' + pct + '%;background:' + bgColor + ';opacity:0.8"></div></div>'
+      + '</div>';
+  }).join("");
+}
+
+function renderCard(item) {
+  const pred = item.prediction || {};
+  const hasLabel = item.label_model_tier != null;
+  const suggestion = suggestLabel(item.prompt, pred);
+  const formId = 'form-' + item.capture_id.replace(/-/g, '');
+
+  let html = '<div class="capture-card" data-id="' + item.capture_id + '">';
+
+  // Header
+  html += '<div class="capture-header">';
+  html += '<span class="meta">' + formatDate(item.captured_at) + '</span>';
+  html += '<span class="badge badge-repo">' + escapeHtml(item.repository_name) + '</span>';
+  if (pred.model_tier) html += '<span class="badge ' + (TIER_CLASSES[pred.model_tier]||"") + '">' + pred.model_tier + '</span>';
+  if (pred.reasoning_effort) html += '<span class="badge ' + (EFFORT_CLASSES[pred.reasoning_effort]||"") + '">' + pred.reasoning_effort + '</span>';
+  if (pred.abstained) html += '<span class="badge badge-abstained">abstained</span>';
+  if (hasLabel) html += '<span class="badge badge-labeled">labeled ✓</span>';
+  html += '</div>';
+
+  // Prompt
+  html += '<div class="prompt-text">' + escapeHtml(item.prompt || "(purged)") + '</div>';
+
+  // Meta
+  html += '<div class="meta">latency: ' + formatMilliseconds(item.inference_latency_ms, item.status)
+    + ' · queue: ' + formatMilliseconds(item.queue_delay_ms, item.status) + '</div>';
+
+  // Distributions
+  if (pred.model_tier_distribution) {
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">';
+    html += '<div class="dist-section"><div class="dist-title">Model Tier</div>' + renderDistBars(pred.model_tier_distribution, {"fast":"var(--green)","balanced":"var(--blue)","deep":"var(--purple)"}) + '</div>';
+    html += '<div class="dist-section"><div class="dist-title">Reasoning Effort</div>' + renderDistBars(pred.reasoning_effort_distribution, {"low":"var(--green)","medium":"var(--blue)","high":"var(--orange)","xhigh":"var(--red)"}) + '</div>';
+    html += '</div>';
+  }
+
+  // Local heuristic suggestion
+  html += '<div class="llm-suggestion">';
+  html += '<div class="llm-header" style="justify-content:space-between; display:flex;">';
+  html += '<span>Local Guideline Suggestion</span>';
+  html += '</div>';
+  html += '<div class="llm-badges" id="badges-' + formId + '">';
+  html += '<span class="badge ' + (TIER_CLASSES[suggestion.tier]||"") + '">' + suggestion.tier + '</span>';
+  html += '<span class="badge ' + (EFFORT_CLASSES[suggestion.effort]||"") + '">' + suggestion.effort + '</span>';
+  html += '</div>';
+  html += '<div class="reason" id="reason-' + formId + '">' + suggestion.reasons.map(r => escapeHtml(r)).join('<br>') + '</div>';
+  html += '</div>';
+
+  // Existing label
+  if (hasLabel) {
+    html += '<div class="existing-label">Label ปัจจุบัน: <strong>' + item.label_model_tier + ' / ' + item.label_reasoning_effort + '</strong></div>';
+  }
+
+  // Label form
+  html += '<div class="label-form">';
+  html += '<div class="label-row">';
+  html += '<div class="label-group"><label>Model Tier</label><select id="tier-' + formId + '">';
+  ["fast","balanced","deep"].forEach(t => {
+    const sel = (hasLabel ? item.label_model_tier : suggestion.tier) === t ? " selected" : "";
+    html += '<option value="' + t + '"' + sel + '>' + t + '</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="label-group"><label>Reasoning Effort</label><select id="effort-' + formId + '">';
+  ["low","medium","high","xhigh"].forEach(e => {
+    const sel = (hasLabel ? item.label_reasoning_effort : suggestion.effort) === e ? " selected" : "";
+    html += '<option value="' + e + '"' + sel + '>' + e + '</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="label-group"><label>Note</label><input type="text" id="note-' + formId + '" placeholder="เหตุผล (optional)"></div>';
+  html += '<button class="btn-use-llm" onclick="useSuggestion(\'' + formId + '\',\'' + suggestion.tier + '\',\'' + suggestion.effort + '\')">ใช้ suggestion</button>';
+  html += '<button class="btn-save" onclick="saveLabel(\'' + item.capture_id + '\',\'' + formId + '\')">💾 Save</button>';
+  html += '</div>';
+  html += '<div class="save-status" id="status-' + formId + '"></div>';
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+window.useSuggestion = function(formId, tier, effort) {
+  document.getElementById("tier-" + formId).value = tier;
+  document.getElementById("effort-" + formId).value = effort;
+};
+
+window.saveLabel = async function(captureId, formId) {
+  const tier = document.getElementById("tier-" + formId).value;
+  const effort = document.getElementById("effort-" + formId).value;
+  const note = document.getElementById("note-" + formId).value || null;
+  const statusEl = document.getElementById("status-" + formId);
+
+  statusEl.innerHTML = '<span style="color:var(--muted-fg)">saving...</span>';
+
+  try {
+    const res = await fetch(API + "/api/label", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ capture_id: captureId, model_tier: tier, reasoning_effort: effort, note })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      statusEl.innerHTML = '<span class="save-ok">✓ saved — ' + tier + '/' + effort + '</span>';
+      // Update local data
+      const item = allItems.find(i => i.capture_id === captureId);
+      if (item) { item.label_model_tier = tier; item.label_reasoning_effort = effort; }
+      updateStats();
+    } else {
+      statusEl.innerHTML = '<span class="save-err">✗ ' + escapeHtml(data.error) + '</span>';
+    }
+  } catch (e) {
+    statusEl.innerHTML = '<span class="save-err">✗ ' + escapeHtml(e.message) + '</span>';
+  }
+};
+
+function updateStats() {
+  const total = allItems.length;
+  const labeled = allItems.filter(i => i.label_model_tier != null).length;
+  const unlabeled = total - labeled;
+  const abstained = allItems.filter(i => i.prediction && i.prediction.abstained).length;
+
+  let tierMatch = 0, effortMatch = 0, labeledWithPred = 0;
+  allItems.forEach(i => {
+    if (i.label_model_tier && i.prediction) {
+      labeledWithPred++;
+      if (i.prediction.model_tier === i.label_model_tier) tierMatch++;
+      if (i.prediction.reasoning_effort === i.label_reasoning_effort) effortMatch++;
+    }
+  });
+
+  const statsHtml = [
+    { label: "Captures", value: total },
+    { label: "Labeled", value: labeled },
+    { label: "Unlabeled", value: unlabeled },
+    { label: "Abstained", value: abstained },
+    { label: "Tier Match", value: labeledWithPred ? Math.round(tierMatch/labeledWithPred*100) + "%" : "—" },
+    { label: "Effort Match", value: labeledWithPred ? Math.round(effortMatch/labeledWithPred*100) + "%" : "—" },
+  ].map(s => '<div class="stat"><div class="stat-label">' + s.label + '</div><div class="stat-value">' + s.value + '</div></div>').join("");
+
+  document.getElementById("stats").innerHTML = statsHtml;
+}
+
+function render() {
+  const container = document.getElementById("captures");
+  let items = allItems;
+  if (currentFilter === "unlabeled") items = items.filter(i => i.label_model_tier == null);
+  if (currentFilter === "labeled") items = items.filter(i => i.label_model_tier != null);
+
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty">ไม่มีรายการ</div>';
+    return;
+  }
+  container.innerHTML = items.map(renderCard).join("");
+  updateStats();
+}
+
+// Tabs
+document.getElementById("tabs").addEventListener("click", e => {
+  if (e.target.classList.contains("tab")) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    e.target.classList.add("active");
+    currentFilter = e.target.dataset.filter;
+    render();
+  }
+});
+
+// Load data
+fetch(API + "/api/captures")
+  .then(r => r.json())
+  .then(data => {
+    allItems = data.items || [];
+    render();
+  })
+  .catch(err => {
+    document.getElementById("captures").innerHTML = '<div class="empty">โหลดไม่ได้: ' + escapeHtml(err.message) + '</div>';
+  });
+</script>
+</body>
+</html>

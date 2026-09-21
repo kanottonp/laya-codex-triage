@@ -1,10 +1,12 @@
 import asyncio
 from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 from mcp.server.mcpserver.exceptions import ToolError
 
 from laya_codex_triage.capture import CaptureRecord
+from laya_codex_triage.dashboard import DashboardController
 from laya_codex_triage.mcp_server import create_mcp_server
 from laya_codex_triage.models import ModelTier, Prediction, ReasoningEffort
 from laya_codex_triage.storage import Storage
@@ -75,6 +77,7 @@ def test_tool_schemas_hide_prompt_by_default_and_allow_explicit_review(tmp_path:
         "triage_label",
         "triage_report",
         "triage_purge",
+        "triage_dashboard",
     }
     assert "mode" not in tool_map["triage_label"].input_schema.get("properties", {})
     assert not any(name.startswith("triage_set_") for name in tool_map)
@@ -163,3 +166,32 @@ def test_start_background_worker_consumes_queue(tmp_path: Path) -> None:
 
     assert storage.pending_count() == 0
     assert storage.count_records("predictions") == 1
+
+
+def test_dashboard_tool_starts_once_and_returns_controller_url(tmp_path: Path) -> None:
+    storage = seeded_storage(tmp_path)
+    dashboard = DashboardController(storage, port=0)
+    server = create_mcp_server(storage, dashboard=dashboard)
+    try:
+        first = call(server, "triage_dashboard")
+        second = call(server, "triage_dashboard")
+    finally:
+        dashboard.close()
+
+    assert first.structured_content == {"url": dashboard.url, "started": True}  # type: ignore[attr-defined]
+    assert second.structured_content == {"url": dashboard.url, "started": False}  # type: ignore[attr-defined]
+
+
+def test_dashboard_tool_reports_fixed_port_collision(tmp_path: Path) -> None:
+    occupant = HTTPServer(("127.0.0.1", 11020), BaseHTTPRequestHandler)
+    try:
+        server = create_mcp_server(seeded_storage(tmp_path))
+        try:
+            call(server, "triage_dashboard")
+        except ToolError as error:
+            assert "11020" in str(error)
+        else:
+            raise AssertionError("dashboard tool started despite occupied port")
+        assert occupant.fileno() >= 0
+    finally:
+        occupant.server_close()

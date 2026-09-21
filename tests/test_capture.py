@@ -134,7 +134,7 @@ def test_missing_plugin_data_uses_default_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake_default = tmp_path / "default-plugin-data"
-    monkeypatch.setattr("laya_codex_triage.capture.DEFAULT_PLUGIN_DATA", fake_default)
+    monkeypatch.setattr("laya_codex_triage.DEFAULT_PLUGIN_DATA", fake_default)
     storage = RecordingStorage()
 
     assert (
