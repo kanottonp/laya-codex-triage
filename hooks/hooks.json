@@ -1,0 +1,16 @@
+{
+  "description": "Capture repository-backed prompts for local shadow-mode triage.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/scripts/capture-prompt\"",
+            "timeout": 1
+          }
+        ]
+      }
+    ]
+  }
+}
