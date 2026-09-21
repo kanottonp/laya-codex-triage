@@ -86,6 +86,7 @@ class LabelHandler(BaseHTTPRequestHandler):
                 "captured_at": row["captured_at"],
                 "repository_name": row["repository_name"],
                 "prompt": row["prompt"],
+                "status": row["status"],
                 "prediction": prediction,
                 "inference_latency_ms": row.get("inference_latency_ms"),
                 "queue_delay_ms": row.get("queue_delay_ms"),

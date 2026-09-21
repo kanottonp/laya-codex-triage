@@ -366,12 +366,12 @@ class Storage:
     def recent_predictions(self, limit: int = 20) -> list[dict[str, object]]:
         rows = self._connection.execute(
             """
-            SELECT c.capture_id, c.captured_at, c.repository_name, c.prompt,
+            SELECT c.capture_id, c.captured_at, c.repository_name, c.prompt, c.status,
                    p.prediction_json, p.inference_latency_ms, p.queue_delay_ms,
                    l.model_tier AS label_model_tier,
                    l.reasoning_effort AS label_reasoning_effort
             FROM captures AS c
-            JOIN predictions AS p USING(capture_id)
+            LEFT JOIN predictions AS p USING(capture_id)
             LEFT JOIN labels AS l USING(capture_id)
             ORDER BY c.captured_at DESC
             LIMIT ?

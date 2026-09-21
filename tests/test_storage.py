@@ -80,6 +80,16 @@ def test_claim_pending_is_fifo_and_exactly_once(tmp_path: Path) -> None:
     assert no_third_claim == []
 
 
+def test_recent_predictions_includes_capture_status_for_dashboard(tmp_path: Path) -> None:
+    storage = Storage.open(tmp_path / "triage.sqlite3", role="mcp")
+    storage.enqueue_capture(capture("awaiting-prediction"))
+
+    rows = storage.recent_predictions()
+
+    assert rows[0]["capture_id"] == "awaiting-prediction"
+    assert rows[0]["status"] == "pending"
+
+
 def test_failed_capture_retries_three_times_then_stops(tmp_path: Path) -> None:
     storage = Storage.open(tmp_path / "triage.sqlite3", role="mcp")
     storage.enqueue_capture(capture("retry-me"))

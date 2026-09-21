@@ -209,6 +209,13 @@ function formatDate(iso) {
     + " " + d.toLocaleTimeString("th-TH", { hour:"2-digit", minute:"2-digit" });
 }
 
+function formatMilliseconds(value, status) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.round(value) + " ms";
+  }
+  return status === "pending" || status === "processing" ? "pending" : "— ms";
+}
+
 function renderDistBars(dist, colorMap) {
   if (!dist) return "";
   const entries = Object.entries(dist).sort((a,b) => b[1] - a[1]);
@@ -244,8 +251,8 @@ function renderCard(item) {
   html += '<div class="prompt-text">' + escapeHtml(item.prompt || "(purged)") + '</div>';
 
   // Meta
-  html += '<div class="meta">latency: ' + (item.inference_latency_ms ? item.inference_latency_ms.toFixed(0) + ' ms' : '—')
-    + ' · queue: ' + (item.queue_delay_ms ? (item.queue_delay_ms/1000).toFixed(1) + ' s' : '—') + '</div>';
+  html += '<div class="meta">latency: ' + formatMilliseconds(item.inference_latency_ms, item.status)
+    + ' · queue: ' + formatMilliseconds(item.queue_delay_ms, item.status) + '</div>';
 
   // Distributions
   if (pred.model_tier_distribution) {
