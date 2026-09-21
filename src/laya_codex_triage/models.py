@@ -56,6 +56,8 @@ class Prediction(FrozenModel):
     checkpoint_revision: str = Field(min_length=1)
     decision_schema_version: str = "1"
     calibration_version: str | None = None
+    model_tier_confidence: float | None = Field(default=None, ge=0, le=1)
+    reasoning_effort_confidence: float | None = Field(default=None, ge=0, le=1)
     latency_ms: float | None = Field(default=None, ge=0)
     abstained: bool = False
     abstention_reason: str | None = None
