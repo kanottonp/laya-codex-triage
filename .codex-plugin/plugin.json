@@ -1,0 +1,26 @@
+{
+  "name": "knt-laya",
+  "version": "0.1.0",
+  "description": "Local shadow-mode triage for repository-backed Codex prompts.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Laya Codex Triage",
+    "shortDescription": "Review local shadow-mode prompt triage.",
+    "longDescription": "Classifies repository-backed Codex prompts locally and exposes review reports without changing the active turn.",
+    "developerName": "Local developer",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Local inference",
+      "Shadow analytics"
+    ],
+    "defaultPrompt": [
+      "Show the current Laya triage health.",
+      "Review recent Laya triage predictions."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}
+

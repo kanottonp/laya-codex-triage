@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "laya-codex-triage"
+version = "0.1.0"
+description = "Local, shadow-mode prompt triage for repository-backed Codex tasks."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "laya==0.3.4",
+  "mcp==2.2.0",
+  "pydantic==2.13.5",
+]
+
+[project.scripts]
+laya-codex-capture = "laya_codex_triage.capture:main"
+laya-codex-mcp = "laya_codex_triage.mcp_server:main"
+laya-codex-preload = "laya_codex_triage.preload:main"
+laya-codex-purge = "laya_codex_triage.storage:purge_main"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.18,<2",
+  "pytest>=9,<10",
+  "ruff>=0.13,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/laya_codex_triage"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["laya_codex_triage"]
+
