@@ -3,6 +3,8 @@ import json
 import stat
 from pathlib import Path
 
+import pytest
+
 from laya_codex_triage.capture import CaptureRecord, capture_hook
 
 
@@ -126,3 +128,24 @@ def test_plugin_data_and_identity_salt_are_user_only(tmp_path: Path) -> None:
 
     assert stat.S_IMODE(plugin_data.stat().st_mode) == 0o700
     assert stat.S_IMODE((plugin_data / ".identity-salt").stat().st_mode) == 0o600
+
+
+def test_missing_plugin_data_uses_default_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_default = tmp_path / "default-plugin-data"
+    monkeypatch.setattr("laya_codex_triage.capture.DEFAULT_PLUGIN_DATA", fake_default)
+    storage = RecordingStorage()
+
+    assert (
+        capture_hook(
+            hook_payload(),
+            {},
+            storage_factory=lambda _: storage,
+            git_resolver=lambda _: Path("/work/example-repo"),
+        )
+        == 0
+    )
+
+    assert len(storage.records) == 1
+    assert (fake_default / ".identity-salt").exists()

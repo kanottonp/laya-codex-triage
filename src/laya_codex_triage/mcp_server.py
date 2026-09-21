@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from mcp.server.mcpserver import MCPServer
 
+from . import DEFAULT_PLUGIN_DATA
 from .models import ModelTier, ReasoningEffort
 from .reporting import ReportObservation, build_report
 from .storage import Storage
@@ -240,7 +241,8 @@ def _count_fields(question: str) -> tuple[str, ...]:
 
 
 def main() -> int:
-    plugin_data = Path(os.environ["PLUGIN_DATA"])
+    plugin_data_value = os.environ.get("PLUGIN_DATA")
+    plugin_data = Path(plugin_data_value) if plugin_data_value else DEFAULT_PLUGIN_DATA
     storage = Storage.open(plugin_data / "triage.sqlite3", role="mcp")
     create_mcp_server(storage).run("stdio")
     return 0

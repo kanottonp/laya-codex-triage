@@ -1,12 +1,16 @@
 """Persistent queue consumer with bounded retries and a circuit breaker."""
 
+import argparse
+import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
+from pathlib import Path
 
-from .laya_backend import BackendOutputError, DecisionBackend
+from . import DEFAULT_CHECKPOINT, DEFAULT_CHECKPOINT_REVISION, DEFAULT_PLUGIN_DATA
+from .laya_backend import BackendOutputError, DecisionBackend, LayaBackend
 from .storage import Storage
 
 BACKOFF_SECONDS = (1.0, 2.0, 4.0, 8.0, 300.0)
@@ -105,3 +109,36 @@ class Worker:
                 time.sleep(idle_sleep_seconds)
             elif result.retry_after_seconds:
                 time.sleep(result.retry_after_seconds)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run the local Laya triage worker")
+    parser.add_argument(
+        "--plugin-data",
+        type=Path,
+        default=None,
+        help="Path to the plugin data directory containing triage.sqlite3",
+    )
+    parser.add_argument(
+        "--idle-sleep",
+        type=float,
+        default=0.25,
+        help="Seconds to sleep when the queue is idle (default: 0.25)",
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Run one iteration and exit",
+    )
+    args = parser.parse_args(argv)
+
+    plugin_data = args.plugin_data or Path(os.environ.get("PLUGIN_DATA") or DEFAULT_PLUGIN_DATA)
+    storage = Storage.open(plugin_data / "triage.sqlite3", role="mcp")
+    backend = LayaBackend(DEFAULT_CHECKPOINT, DEFAULT_CHECKPOINT_REVISION, local_files_only=True)
+    worker = Worker(storage, backend)
+    if args.once:
+        result = worker.run_once()
+        print(f"Status: {result.status}, Latency: {result.inference_latency_ms} ms")
+        return 0
+    worker.run_forever(idle_sleep_seconds=args.idle_sleep)
+    return 0

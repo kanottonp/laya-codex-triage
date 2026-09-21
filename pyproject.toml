@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "laya-codex-triage"
-version = "0.1.1"
+version = "0.1.2"
 description = "Local, shadow-mode prompt triage for repository-backed Codex tasks."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -19,6 +19,7 @@ laya-codex-capture = "laya_codex_triage.capture:main"
 laya-codex-mcp = "laya_codex_triage.mcp_server:main"
 laya-codex-preload = "laya_codex_triage.preload:main"
 laya-codex-purge = "laya_codex_triage.storage:purge_main"
+laya-codex-worker = "laya_codex_triage.worker:main"
 
 [dependency-groups]
 dev = [

@@ -2,6 +2,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from laya_codex_triage.capture import CaptureRecord
 from laya_codex_triage.laya_backend import BackendOutputError
 from laya_codex_triage.models import ModelTier, Prediction, ReasoningEffort
@@ -163,3 +165,18 @@ def test_success_after_breaker_cooldown_recovers_worker(tmp_path: Path) -> None:
     assert result.status is WorkerStatus.BREAKER_OPEN
     assert recovered.status is WorkerStatus.COMPLETED
     assert worker.consecutive_failures == 0
+
+
+def test_worker_main_cli_runs_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from laya_codex_triage.worker import main
+
+    storage = Storage.open(tmp_path / "triage.sqlite3", role="mcp")
+    storage.enqueue_capture(capture("cli-item"))
+    monkeypatch.setattr(
+        "laya_codex_triage.worker.LayaBackend",
+        lambda *args, **kwargs: SequenceBackend([prediction()]),
+    )
+
+    exit_code = main(["--plugin-data", str(tmp_path), "--once"])
+    assert exit_code == 0
+    assert storage.count_records("predictions") == 1
